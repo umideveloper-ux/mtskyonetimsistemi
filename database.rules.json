@@ -1,0 +1,97 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "schools": {
+      ".read": true,
+      "$schoolId": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.email === data.child('email').val() || auth.token.email === 'admin@surucukursu.com')",
+        
+        "instructors": {
+          ".read": true,
+          ".write": true,
+          "$instructorId": {
+            ".read": true,
+            ".write": true,
+            "students": {
+              ".read": true,
+              ".write": true
+            }
+          }
+        },
+        
+        "candidates": {
+          ".read": true,
+          ".write": true,
+          "$candidateId": {
+            ".read": true,
+            ".write": true
+          }
+        }
+      }
+    },
+    "examLists": {
+      ".read": true,
+      ".write": true,
+      "$schoolId": {
+        ".read": true,
+        ".write": true,
+        "$instructorId": {
+          ".read": true,
+          ".write": true,
+          "$month": {
+            ".read": true,
+            ".write": true,
+            "saturday": {
+              ".read": true,
+              ".write": true
+            },
+            "sunday": {
+              ".read": true,
+              ".write": true
+            }
+          }
+        }
+      }
+    },
+    "schedule": {
+      ".read": true,
+      ".write": true,
+      "$instructorId": {
+        ".read": true,
+        ".write": true,
+        "$date": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
+    "messages": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": "timestamp"
+    },
+    "announcements": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'admin@surucukursu.com'",
+      ".indexOn": "createdAt"
+    },
+    "instructorAccess": {
+      ".read": true,
+      ".write": true,
+      "$instructorId": {
+        ".read": true,
+        ".write": true,
+        "students": {
+          ".read": true,
+          ".write": true
+        },
+        "examLists": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    }
+  }
+}
