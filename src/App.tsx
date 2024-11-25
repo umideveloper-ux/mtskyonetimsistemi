@@ -3,9 +3,10 @@ import Login from './components/Login';
 import DashboardLayout from './components/dashboard/DashboardLayout';
 import InstructorDashboard from './components/instructor/InstructorDashboard';
 import { School } from './types';
-import { updateCandidates, getSchoolsData, listenToSchoolsData, onAuthStateChange, signOutUser } from './firebase';
+import { updateCandidates, getSchoolsData, listenToSchoolsData, onAuthStateChange, signOutUser, ref, onValue } from './firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { db } from './firebase';
 
 interface Instructor {
   id: string;
@@ -31,6 +32,22 @@ const App: React.FC = () => {
           const userSchool = fetchedSchools.find(school => school.email === user.email);
           if (userSchool) {
             setLoggedInSchool(userSchool);
+            
+            // Okulun verilerini realtime olarak dinle
+            const schoolRef = ref(db, `schools/${userSchool.id}`);
+            const unsubscribeSchool = onValue(schoolRef, (snapshot) => {
+              if (snapshot.exists()) {
+                const schoolData = snapshot.val();
+                setLoggedInSchool(prevState => ({
+                  ...prevState!,
+                  candidates: schoolData.candidates || {}
+                }));
+              }
+            });
+
+            return () => {
+              unsubscribeSchool();
+            };
           } else if (user.email === 'admin@surucukursu.com') {
             setLoggedInSchool({
               id: 'admin',

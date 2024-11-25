@@ -29,6 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
   const [error, setError] = useState<string | null>(null);
   const [showCandidates, setShowCandidates] = useState(false);
   const [showQuota, setShowQuota] = useState(false);
+  const [localCandidates, setLocalCandidates] = useState(school.candidates);
   const { width } = useWindowSize();
   const [hasManagementAccess, setHasManagementAccess] = useState(false);
 
@@ -42,68 +43,34 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
       return;
     }
 
-    // Check management access
-    const managementAccessRef = ref(db, `schools/${school.id}`);
-    const unsubscribeAccess = onValue(managementAccessRef, (snapshot) => {
+    // Management erişimini kontrol et
+    const managementRef = ref(db, `schools/${school.id}/hasManagementAccess`);
+    const unsubscribeManagement = onValue(managementRef, (snapshot) => {
       if (snapshot.exists()) {
-        const schoolData = snapshot.val();
-        setHasManagementAccess(schoolData.hasManagementAccess || false);
+        setHasManagementAccess(snapshot.val() || false);
       }
     });
 
-    const licenseFeesRef = ref(db, 'licenseFees');
-    const schoolsRef = ref(db, 'schools');
-
-    const updateData = () => {
-      const licenseFeesListener = onValue(licenseFeesRef, (snapshot) => {
-        if (snapshot.exists()) {
-          setLicenseFees(snapshot.val());
-        }
-      });
-
-      const schoolsListener = onValue(schoolsRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const schoolsData = snapshot.val();
-          const updatedSchoolsList = Object.entries(schoolsData).map(([id, schoolData]: [string, any]) => ({
-            id,
-            name: schoolData.name,
-            email: schoolData.email,
-            candidates: schoolData.candidates || {},
-          }));
-          setUpdatedSchools(updatedSchoolsList);
-        }
-      });
-
-      return () => {
-        licenseFeesListener();
-        schoolsListener();
-      };
-    };
-
-    const initialUnsubscribe = updateData();
-    const intervalId = setInterval(updateData, 10000);
-
     return () => {
-      unsubscribeAccess();
-      initialUnsubscribe();
-      clearInterval(intervalId);
+      unsubscribeManagement();
     };
-  }, [onLogout, school.id]);
+  }, [school.id, onLogout]);
 
   const handleCandidateChange = async (licenseClass: LicenseClass | DifferenceClass, change: number) => {
     setIsLoading(true);
     setError(null);
     try {
       const updatedCandidates = {
-        ...school.candidates,
-        [licenseClass]: Math.max(0, (school.candidates[licenseClass] || 0) + change)
+        ...localCandidates,
+        [licenseClass]: Math.max(0, (localCandidates[licenseClass] || 0) + change)
       };
+      console.log('Güncelleme gönderiliyor:', updatedCandidates);
       await updateCandidates(school.id, updatedCandidates);
-      toast.success('Aday sayısı başarıyla güncellendi.');
-    } catch (error: any) {
-      console.error('Error updating candidates:', error);
-      setError('Aday sayısı güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
-      toast.error('Aday sayısı güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      toast.success('Aday sayısı güncellendi');
+    } catch (error) {
+      console.error('Aday güncelleme hatası:', error);
+      setError('Aday sayısı güncellenirken bir hata oluştu');
+      toast.error('Aday sayısı güncellenirken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +146,7 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
           )}
           {showCandidates && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Object.entries(school.candidates).map(([classType, count]) => (
+              {Object.entries(localCandidates).map(([classType, count]) => (
                 <div key={classType} className="bg-gray-100 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-2">{classType}</h3>
                   <div className="flex items-center justify-between">

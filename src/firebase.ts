@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue, off, push, get, remove, update } from 'firebase/database';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
 import { School, Message } from './types';
 
 const firebaseConfig = {
@@ -10,10 +11,12 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
+export const analytics = getAnalytics(app);
 export const db = getDatabase(app);
 export const auth = getAuth(app);
 
@@ -145,9 +148,12 @@ export const addCandidate = async (schoolId: string, candidateData: any) => {
 };
 
 export const updateCandidates = async (schoolId: string, updatedCandidates: School['candidates']) => {
-  const schoolRef = ref(db, `schools/${schoolId}/candidates`);
   try {
-    await set(schoolRef, updatedCandidates);
+    const schoolRef = ref(db, `schools/${schoolId}`);
+    const updates = {
+      candidates: updatedCandidates
+    };
+    await update(schoolRef, updates);
   } catch (error) {
     console.error('Error updating candidates:', error);
     throw error;

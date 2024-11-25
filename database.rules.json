@@ -1,12 +1,12 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": true,
+    ".write": true,
     "schools": {
       ".read": true,
       "$schoolId": {
         ".read": true,
-        ".write": "auth != null && (auth.token.email === data.child('email').val() || auth.token.email === 'admin@surucukursu.com')",
+        ".write": true,
         
         "instructors": {
           ".read": true,
@@ -68,13 +68,13 @@
       }
     },
     "messages": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": true,
+      ".write": true,
       ".indexOn": "timestamp"
     },
     "announcements": {
-      ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'admin@surucukursu.com'",
+      ".read": true,
+      ".write": true,
       ".indexOn": "createdAt"
     },
     "instructorAccess": {
