@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, onValue, off, push, get, remove, update } from 'firebase/database';
+import { getDatabase, set, push, get, remove, update, ref, onValue, off } from 'firebase/database';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { School, Message } from './types';
@@ -19,6 +19,8 @@ const app = initializeApp(firebaseConfig);
 export const analytics = getAnalytics(app);
 export const db = getDatabase(app);
 export const auth = getAuth(app);
+
+export { ref, onValue } from 'firebase/database';
 
 // Tüm okulların verilerini getir
 export const getSchoolsData = async (): Promise<School[]> => {
