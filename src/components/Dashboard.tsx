@@ -29,7 +29,6 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
   const [error, setError] = useState<string | null>(null);
   const [showCandidates, setShowCandidates] = useState(false);
   const [showQuota, setShowQuota] = useState(false);
-  const [localCandidates, setLocalCandidates] = useState(school.candidates);
   const { width } = useWindowSize();
   const [hasManagementAccess, setHasManagementAccess] = useState(false);
 
@@ -61,8 +60,8 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
     setError(null);
     try {
       const updatedCandidates = {
-        ...localCandidates,
-        [licenseClass]: Math.max(0, (localCandidates[licenseClass] || 0) + change)
+        ...school.candidates,
+        [licenseClass]: Math.max(0, (school.candidates[licenseClass] || 0) + change)
       };
       console.log('Güncelleme gönderiliyor:', updatedCandidates);
       await updateCandidates(school.id, updatedCandidates);
@@ -146,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, update
           )}
           {showCandidates && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Object.entries(localCandidates).map(([classType, count]) => (
+              {Object.entries(school.candidates).map(([classType, count]) => (
                 <div key={classType} className="bg-gray-100 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-2">{classType}</h3>
                   <div className="flex items-center justify-between">

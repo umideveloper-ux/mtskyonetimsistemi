@@ -60,19 +60,20 @@ const DetailedReport: React.FC<DetailedReportProps> = ({ schools: initialSchools
     }, 0);
   };
 
-  const filteredSchools = useMemo(() => 
+  const filteredSchools = useMemo(() =>
     schools.filter(school => school.id !== 'admin'), [schools]
   );
 
-  const totalCandidates = useMemo(() => 
-    filteredSchools.reduce((sum, school) => 
-      sum + Object.values(school.candidates).reduce((schoolSum, count) => 
-        schoolSum + (Number(count) || 0), 0), 0
-    ), [filteredSchools]
+  const totalCandidates = useMemo(() =>
+    filteredSchools.reduce((sum, school) => {
+      const schoolTotalCandidates = Object.values(school.candidates).reduce((sum, count) => sum + (count || 0), 0);
+      return sum + schoolTotalCandidates;
+    }, 0)
+    , [filteredSchools]
   );
 
-  const totalFee = useMemo(() => 
-    filteredSchools.reduce((sum, school) => 
+  const totalFee = useMemo(() =>
+    filteredSchools.reduce((sum, school) =>
       sum + calculateTotalFee(school.candidates), 0
     ), [filteredSchools, licenseFees]
   );
@@ -135,9 +136,12 @@ const DetailedReport: React.FC<DetailedReportProps> = ({ schools: initialSchools
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredSchools.map((school) => {
-                const schoolTotalCandidates = Object.values(school.candidates)
-                  .reduce((sum, count) => sum + (Number(count) || 0), 0);
+                const schoolTotalCandidates = Object.values(school.candidates).reduce((sum, count) => sum + (count || 0), 0);
                 const schoolTotalFee = calculateTotalFee(school.candidates);
+                const candidatesByClass = Object.entries(school.candidates).map(([classType, count]) => ({
+                  classType,
+                  count: count || 0
+                }));
 
                 return (
                   <tr key={school.id}>
@@ -164,7 +168,7 @@ const DetailedReport: React.FC<DetailedReportProps> = ({ schools: initialSchools
                 <td className="px-2 py-2 whitespace-nowrap font-bold">Toplam</td>
                 {classTypes.map((type) => (
                   <td key={type} className="px-2 py-2 whitespace-nowrap font-bold">
-                    {filteredSchools.reduce((sum, school) => 
+                    {filteredSchools.reduce((sum, school) =>
                       sum + (Number(school.candidates[type]) || 0), 0
                     )}
                   </td>
