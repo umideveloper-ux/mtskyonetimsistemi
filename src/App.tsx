@@ -4,10 +4,10 @@ import DashboardLayout from './components/dashboard/DashboardLayout';
 import InstructorDashboard from './components/instructor/InstructorDashboard';
 import AdminPanel from './components/AdminPanel';
 import { School } from './types';
-import { updateCandidates, getSchoolsData, onAuthStateChange, signOutUser, ref, onValue } from './firebase';
+import { auth } from './firebase/firebase.config';
+import { getSchoolsData, signOutUser, updateCandidates, subscribeToSchool } from './firebase/firebaseUtils';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { db } from './firebase';
 import { useDevice } from './hooks/useDevice';
 
 interface Instructor {
@@ -48,26 +48,29 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChange(async (user) => {
+    const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
         try {
           setIsLoading(true);
-          const fetchedSchools = await getSchoolsData();
-          setSchools(fetchedSchools);
-          const userSchool = fetchedSchools.find(school => school.email === user.email);
+          const userSchool = await getSchoolsData(user.uid);
+          
           if (userSchool) {
             setLoggedInSchool(userSchool);
             
             // Okulun verilerini realtime olarak dinle
-            const schoolRef = ref(db, `schools/${userSchool.id}`);
-            const unsubscribeSchool = onValue(schoolRef, (snapshot) => {
-              if (snapshot.exists()) {
-                const schoolData = snapshot.val();
-                setLoggedInSchool(prevState => ({
-                  ...prevState!,
-                  candidates: schoolData.candidates || defaultCandidates
-                }));
-              }
+            const unsubscribeSchool = subscribeToSchool(userSchool.id, (schoolData) => {
+              setLoggedInSchool(prevState => {
+                if (!prevState) return null;
+                return {
+                  ...prevState,
+                  ...schoolData,
+                  id: prevState.id, // id'yi koruyoruz
+                  candidates: {
+                    ...prevState.candidates,
+                    ...(schoolData.candidates || {})
+                  }
+                };
+              });
             });
 
             return () => {
