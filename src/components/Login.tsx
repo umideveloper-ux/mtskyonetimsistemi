@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signIn } from '../firebase';
+import { signIn } from '../firebase/auth';
 import { toast } from 'react-toastify';
 import { useDevice } from '../hooks/useDevice';
 import { predefinedSchools } from '../config/schools';
