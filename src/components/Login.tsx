@@ -3,7 +3,7 @@ import { signIn } from '../firebase/auth';
 import { toast } from 'react-toastify';
 import { useDevice } from '../hooks/useDevice';
 import { predefinedSchools } from '../config/schools';
-import { LoginProps, LoginState, FormValidationError, Instructor } from './LoginTypes';
+import { LoginProps, LoginState, FormValidationError } from './LoginTypes';
 import MobileLogin from './MobileLogin';
 import DesktopLogin from './DesktopLogin';
 
@@ -11,9 +11,8 @@ const initialState: LoginState = {
   selectedSchool: '',
   email: '',
   password: '',
-  isInstructorMode: false,
   selectedInstructor: '',
-  instructorPassword: '',
+  isInstructorLogin: false,
   error: '',
   isLoading: false,
 };
@@ -21,17 +20,16 @@ const initialState: LoginState = {
 const Login: React.FC<LoginProps> = ({ onLogin, onInstructorLogin }) => {
   const { isMobile } = useDevice();
   const [state, setState] = useState<LoginState>(initialState);
-  const [instructors] = useState<Instructor[]>([]);
 
   const validateForm = (): FormValidationError | null => {
     if (!state.selectedSchool) {
-      return { field: 'school', message: 'Lütfen bir okul seçin' };
+      return new FormValidationError('school', 'Lütfen bir okul seçin');
     }
     if (!state.password || state.password.length < 6) {
-      return { field: 'password', message: 'Şifre en az 6 karakter olmalıdır' };
+      return new FormValidationError('password', 'Şifre en az 6 karakter olmalıdır');
     }
-    if (state.isInstructorMode && !state.selectedInstructor) {
-      return { field: 'instructor', message: 'Lütfen bir eğitmen seçin' };
+    if (state.isInstructorLogin && !state.selectedInstructor) {
+      return new FormValidationError('instructor', 'Lütfen bir eğitmen seçin');
     }
     return null;
   };
@@ -67,89 +65,68 @@ const Login: React.FC<LoginProps> = ({ onLogin, onInstructorLogin }) => {
       ...prev,
       selectedSchool: schoolId,
       selectedInstructor: '',
-      instructorPassword: '',
       email: school ? school.email : schoolId === 'admin' ? 'admin@surucukursu.com' : '',
       error: ''
     }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (state.isInstructorLogin) {
+      handleInstructorLogin(e);
+      return;
+    }
+
+    const validationError = validateForm();
+    if (validationError) {
+      setState(prev => ({ ...prev, error: validationError.message }));
+      toast.error(validationError.message);
+      return;
+    }
+
+    setState(prev => ({ ...prev, isLoading: true, error: '' }));
+
+    try {
+      const selectedSchoolData = predefinedSchools.find(school => school.id === state.selectedSchool);
+      if (!selectedSchoolData) {
+        throw new Error('Okul bulunamadı');
+      }
+
+      await signIn(selectedSchoolData.email, state.password);
+      onLogin(selectedSchoolData);
+    } catch (error: any) {
+      handleError(error);
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
   const handleInstructorLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setState(prev => ({ ...prev, error: '', isLoading: true }));
 
-    const validation = validateForm();
-    if (validation) {
-      setState(prev => ({ ...prev, error: validation.message, isLoading: false }));
-      return;
-    }
-
     try {
-      const instructor = instructors.find(i => i.id === state.selectedInstructor);
-      
-      if (instructor && instructor.password === state.instructorPassword) {
-        const school = predefinedSchools.find(s => s.id === state.selectedSchool);
-        onInstructorLogin({
-          id: instructor.id,
-          name: instructor.name,
-          email: instructor.email,
-          school: school?.name || ''
-        });
-        toast.success('Giriş başarılı!');
-      } else {
-        throw new Error('auth/wrong-password');
+      const school = predefinedSchools.find(s => s.id === state.selectedSchool);
+      if (!school || !school.instructors) {
+        throw new Error('Okul veya eğitmen bilgisi bulunamadı');
       }
-    } catch (error) {
-      handleError(error as Error);
+
+      const instructor = school.instructors[state.selectedInstructor];
+      if (!instructor) {
+        throw new Error('Eğitmen bilgisi bulunamadı');
+      }
+
+      if (instructor.password !== state.password) {
+        throw new Error('Şifre hatalı');
+      }
+
+      onInstructorLogin(instructor);
+    } catch (error: any) {
+      setState(prev => ({ ...prev, error: error.message }));
+      toast.error(error.message);
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const handleSchoolLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setState(prev => ({ ...prev, error: '', isLoading: true }));
-
-    const validation = validateForm();
-    if (validation) {
-      setState(prev => ({ ...prev, error: validation.message, isLoading: false }));
-      return;
-    }
-
-    try {
-      await signIn(state.email, state.password);
-      
-      if (state.selectedSchool === 'admin') {
-        onLogin({
-          id: 'admin',
-          name: 'Admin',
-          email: 'admin@surucukursu.com',
-          candidates: {
-            B: 0, A1: 0, A2: 0, C: 0, D: 0,
-            FARK_A1: 0, FARK_A2: 0, BAKANLIK_A1: 0
-          }
-        });
-      } else {
-        const school = predefinedSchools.find(s => s.id === state.selectedSchool);
-        if (school) {
-          onLogin(school);
-          toast.success('Giriş başarılı!');
-        } else {
-          throw new Error('Seçilen okul bulunamadı');
-        }
-      }
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setState(prev => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (state.isInstructorMode) {
-      handleInstructorLogin(e);
-    } else {
-      handleSchoolLogin(e);
     }
   };
 

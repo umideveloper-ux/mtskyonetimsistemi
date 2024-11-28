@@ -1,9 +1,42 @@
+export interface BaseInstructor {
+  id: string;
+  name: string;
+  username: string;
+  password: string;
+  email: string;
+  school: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface InstructorWithoutCredentials {
+  id: string;
+  name: string;
+  email: string;
+  school: string;
+}
+
+export type Instructor = BaseInstructor;
+
+export interface Candidate {
+  id: string;
+  name: string;
+  courseType: LicenseClass | DifferenceClass;
+  status: 'active' | 'completed' | 'pending';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface School {
   id: string;
   name: string;
   email: string;
-  candidates: {
-    [key in LicenseClass | DifferenceClass]: number;
+  hasManagementAccess?: boolean;
+  instructors?: {
+    [key: string]: Instructor;
+  };
+  candidates?: {
+    [key: string]: Candidate;
   };
 }
 
@@ -13,6 +46,11 @@ export interface Message {
   schoolName: string;
   content: string;
   timestamp: Date;
+}
+
+export interface AdminPanelProps {
+  isAdmin: boolean;
+  onClose: () => void;
 }
 
 export type LicenseClass = 'B' | 'A1' | 'A2' | 'C' | 'D';

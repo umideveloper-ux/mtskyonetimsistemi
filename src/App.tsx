@@ -3,47 +3,32 @@ import Login from './components/Login';
 import DashboardLayout from './components/dashboard/DashboardLayout';
 import InstructorDashboard from './components/instructor/InstructorDashboard';
 import AdminPanel from './components/AdminPanel';
-import { School } from './types';
+import { School, InstructorWithoutCredentials, LicenseClass, DifferenceClass } from './types';
 import { auth } from './firebase/firebase.config';
 import { signOutUser } from './firebase/auth';
 import { getSchoolsData, getSchoolByEmail, updateCandidates, subscribeToSchool } from './firebase/firebaseUtils';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useDevice } from './hooks/useDevice';
-
-interface Instructor {
-  id: string;
-  name: string;
-  email: string;
-  school: string;
-}
+import { predefinedSchools } from './config/schools';
 
 interface Candidates {
-  B: number;
-  A1: number;
-  A2: number;
-  C: number;
-  D: number;
-  FARK_A1: number;
-  FARK_A2: number;
-  BAKANLIK_A1: number;
+  [key: string]: {
+    id: string;
+    name: string;
+    courseType: LicenseClass | DifferenceClass;
+    status: 'active' | 'completed' | 'pending';
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
-const defaultCandidates: Candidates = {
-  B: 0,
-  A1: 0,
-  A2: 0,
-  C: 0,
-  D: 0,
-  FARK_A1: 0,
-  FARK_A2: 0,
-  BAKANLIK_A1: 0
-};
+const defaultCandidates: Candidates = {};
 
 const App: React.FC = () => {
   const { isMobile, isTablet } = useDevice();
   const [loggedInSchool, setLoggedInSchool] = useState<School | null>(null);
-  const [loggedInInstructor, setLoggedInInstructor] = useState<Instructor | null>(null);
+  const [loggedInInstructor, setLoggedInInstructor] = useState<InstructorWithoutCredentials | null>(null);
   const [schools, setSchools] = useState<School[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +47,15 @@ const App: React.FC = () => {
               email: 'admin@surucukursu.com',
               candidates: defaultCandidates
             });
+
+            // Admin için tüm okulların verilerini al
+            const allSchools = await Promise.all(
+              predefinedSchools.map(async (school) => {
+                const schoolData = await getSchoolsData(school.id);
+                return schoolData || school;
+              })
+            );
+            setSchools(allSchools.filter(Boolean));
           } else {
             const userSchool = await getSchoolByEmail(user.email || '');
             
@@ -101,6 +95,8 @@ const App: React.FC = () => {
         }
       } else {
         setLoggedInSchool(null);
+        setLoggedInInstructor(null);
+        setSchools([]);
         setIsLoading(false);
       }
     });
@@ -112,7 +108,7 @@ const App: React.FC = () => {
     setLoggedInSchool(school);
   };
 
-  const handleInstructorLogin = (instructor: Instructor) => {
+  const handleInstructorLogin = (instructor: InstructorWithoutCredentials) => {
     setLoggedInInstructor(instructor);
   };
 
@@ -156,7 +152,7 @@ const App: React.FC = () => {
         ${isMobile ? 'p-2' : isTablet ? 'p-4' : 'p-6'}
         ${isMobile ? 'text-sm' : 'text-base'}
       `}>
-        <AdminPanel />
+        <AdminPanel isAdmin={true} onClose={handleLogout} />
       </div>
     );
   }

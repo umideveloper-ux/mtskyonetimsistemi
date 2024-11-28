@@ -9,13 +9,7 @@ import {
 import InstructorSchedule from './InstructorSchedule';
 import InstructorStudents from './InstructorStudents';
 import InstructorExams from './InstructorExams';
-
-interface Instructor {
-  id: string;
-  name: string;
-  email: string;
-  school: string;
-}
+import { InstructorWithoutCredentials as Instructor } from '../../types';
 
 interface InstructorDashboardProps {
   instructor: Instructor;

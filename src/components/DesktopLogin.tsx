@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Sparkles, User, Building2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { LoginProps, LoginState } from './LoginTypes';
 import { predefinedSchools } from '../config/schools';
 

@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Send, 
-  Bell, 
-  DollarSign, 
-  FileText, 
   RefreshCw, 
   Trash2, 
   Save,
-  Shield,
   MessageSquare,
   Settings,
   Lock,
   Unlock
 } from 'lucide-react';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { ref, push, remove, update, get } from 'firebase/database';
 import { toast } from 'react-toastify';
-import { LicenseClass, DifferenceClass, CLASS_NAMES } from '../types';
+import { LicenseClass, DifferenceClass, CLASS_NAMES, AdminPanelProps } from '../types';
 
-const AdminPanel: React.FC = () => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onClose }) => {
+  if (!isAdmin) {
+    return null;
+  }
+
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [announcementType, setAnnouncementType] = useState<'meeting' | 'fee_collection' | 'price_update'>('meeting');
   const [licenseFees, setLicenseFees] = useState<{ [key in LicenseClass | DifferenceClass]: number }>({
@@ -226,6 +226,12 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+      >
+        Kapat
+      </button>
       {/* Duyuru Yönetimi */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-6">Duyuru Yönetimi</h2>
@@ -330,10 +336,7 @@ const AdminPanel: React.FC = () => {
                     Erişim Var
                   </>
                 ) : (
-                  <>
-                    <Lock className="mr-2 h-5 w-5" />
-                    Erişim Yok
-                  </>
+                  <Lock className="mr-2 h-5 w-5" />
                 )}
               </button>
             </div>
