@@ -1,0 +1,288 @@
+import React, { useState, useEffect } from 'react';
+import { School, LicenseClass, DifferenceClass } from '../types';
+import Chat from './Chat';
+import AnnouncementsList from './AnnouncementsList';
+import { LogOut, Car, Plus, Users, Calculator, MessageSquare, BarChart2, Settings, Info, Minus } from 'lucide-react';
+import DetailedReport from './DetailedReport';
+import AnalyticsChart from './AnalyticsChart';
+import { auth, db } from '../firebase';
+import Footer from './Footer';
+import { toast } from 'react-toastify';
+import useWindowSize from '../hooks/useWindowSize';
+import { ref, onValue } from 'firebase/database';
+import DashboardManagement from './management/DashboardManagement';
+import AdminPanel from './AdminPanel';
+
+interface DashboardProps {
+  school: School;
+  onLogout: () => void;
+  schools: School[];
+  updateCandidates: (schoolId: string, updatedCandidates: School['candidates']) => Promise<void>;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ school, onLogout, schools, updateCandidates }) => {
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showCandidates, setShowCandidates] = useState(false);
+  const [showQuota, setShowQuota] = useState(false);
+  const { width } = useWindowSize();
+  const [hasManagementAccess, setHasManagementAccess] = useState(false);
+  const [formCandidates, setFormCandidates] = useState<Record<string, number>>(school.candidates);
+
+  const isMobile = width < 768;
+  const isAdmin = auth.currentUser?.email === 'admin@surucukursu.com';
+
+  useEffect(() => {
+    if (!auth.currentUser) {
+      toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+      onLogout();
+      return;
+    }
+
+    // Management erişimini kontrol et
+    const managementRef = ref(db, `schools/${school.id}/hasManagementAccess`);
+    const unsubscribeManagement = onValue(managementRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setHasManagementAccess(snapshot.val() || false);
+      }
+    });
+
+    return () => {
+      unsubscribeManagement();
+    };
+  }, [school.id, onLogout]);
+
+  useEffect(() => {
+    setFormCandidates(school.candidates);
+  }, [school.candidates]);
+
+  const handleCandidateChange = async (licenseClass: LicenseClass | DifferenceClass, change: number) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const updatedCandidates = {
+        ...school.candidates,
+        [licenseClass]: Math.max(0, (school.candidates[licenseClass] || 0) + change)
+      };
+      console.log('Güncelleme gönderiliyor:', updatedCandidates);
+      await updateCandidates(school.id, updatedCandidates);
+      toast.success('Aday sayısı güncellendi');
+    } catch (error) {
+      console.error('Aday güncelleme hatası:', error);
+      setError('Aday sayısı güncellenirken bir hata oluştu');
+      toast.error('Aday sayısı güncellenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleChat = () => setShowChat(!showChat);
+  const toggleAdminPanel = () => setShowAdminPanel(!showAdminPanel);
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <Car className="h-8 w-8 text-indigo-600" />
+                <span className={`ml-2 text-xl font-bold text-gray-800 ${isMobile ? 'text-sm' : ''}`}>
+                  Aday Takip Sistemi
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {(hasManagementAccess || isAdmin) && (
+                <button
+                  onClick={() => setShowManagement(true)}
+                  className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                >
+                  <Settings className="mr-2" size={18} />
+                  <span className="hidden sm:inline">Yönetim Paneli</span>
+                </button>
+              )}
+
+              {isAdmin && (
+                <button
+                  onClick={toggleAdminPanel}
+                  className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                >
+                  <Settings className="mr-2" size={18} />
+                  <span className="hidden sm:inline">Admin Paneli</span>
+                </button>
+              )}
+              <button
+                onClick={onLogout}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded flex items-center"
+              >
+                <LogOut className="mr-2" size={18} />
+                <span className="hidden sm:inline">Çıkış Yap</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <AnnouncementsList isAdmin={isAdmin} />
+
+        <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Aday Sayıları 1</h2>
+            <button
+              onClick={() => setShowCandidates(!showCandidates)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
+            >
+              {showCandidates ? <Minus size={20} /> : <Plus size={20} />}
+              <span className="ml-2">{showCandidates ? 'Gizle' : 'Göster'}</span>
+            </button>
+          </div>
+          {!showCandidates && (
+            <div className="text-gray-600 italic flex items-center">
+              <Info size={18} className="mr-2" />
+              <span>Aday sayılarını görüntülemek ve düzenlemek için "Göster" butonuna tıklayın.</span>
+            </div>
+          )}
+          {showCandidates && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Object.entries(formCandidates).map(([classType, count]) => (
+                  <div key={classType} className="bg-blue-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <label htmlFor={classType} className="block text-xl font-semibold text-blue-900 mb-4">{classType}</label>
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => {
+                          setFormCandidates(prev => ({
+                            ...prev,
+                            [classType]: Math.max(0, (prev[classType] || 0) - 1)
+                          }));
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg"
+                      >
+                        <Minus size={20} />
+                      </button>
+                      <input
+                        type="number"
+                        id={classType}
+                        min="0"
+                        value={count || 0}
+                        onChange={(e) => {
+                          const newValue = Math.max(0, parseInt(e.target.value) || 0);
+                          setFormCandidates(prev => ({
+                            ...prev,
+                            [classType]: newValue
+                          }));
+                        }}
+                        className="w-full p-4 text-center text-2xl font-bold border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-300 focus:border-transparent transition-all duration-300"
+                      />
+                      <button
+                        onClick={() => {
+                          setFormCandidates(prev => ({
+                            ...prev,
+                            [classType]: (prev[classType] || 0) + 1
+                          }));
+                        }}
+                        className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg"
+                      >
+                        <Plus size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  onClick={() => setFormCandidates(school.candidates)}
+                  className="px-6 py-2 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Sıfırla
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true);
+                      await updateCandidates(school.id, formCandidates);
+                      toast.success('Aday sayıları güncellendi');
+                    } catch (error) {
+                      console.error('Aday güncelleme hatası:', error);
+                      toast.error('Aday sayıları güncellenirken bir hata oluştu');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <span>Güncelle</span>
+                  {isLoading && <span className="ml-2 animate-spin">⏳</span>}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DetailedReport schools={schools} />
+
+        <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Sohbet</h2>
+            <button
+              onClick={toggleChat}
+              className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded flex items-center"
+            >
+              <MessageSquare className="mr-2" size={18} />
+              {showChat ? 'Gizle' : 'Göster'}
+            </button>
+          </div>
+          {showChat && <Chat currentSchool={school} schools={schools} />}
+        </div>
+
+        <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Analitik</h2>
+            <button
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
+            >
+              <BarChart2 className="mr-2" size={18} />
+              {showAnalytics ? 'Gizle' : 'Göster'}
+            </button>
+          </div>
+          {showAnalytics && <AnalyticsChart school={school} />}
+        </div>
+
+        {showManagement && (
+          <DashboardManagement
+            school={school}
+            onClose={() => setShowManagement(false)}
+          />
+        )}
+
+        {showAdminPanel && isAdmin && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] mx-4 overflow-y-auto">
+              <AdminPanel />
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowAdminPanel(false)}
+                  className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default Dashboard;

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import DashboardLayout from './components/dashboard/DashboardLayout';
 import InstructorDashboard from './components/instructor/InstructorDashboard';
+import AdminPanel from './components/AdminPanel';
 import { School } from './types';
-import { updateCandidates, getSchoolsData, listenToSchoolsData, onAuthStateChange, signOutUser, ref, onValue } from './firebase';
+import { updateCandidates, getSchoolsData, onAuthStateChange, signOutUser, ref, onValue } from './firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { db } from './firebase';
+import { useDevice } from './hooks/useDevice';
 
 interface Instructor {
   id: string;
@@ -15,7 +17,30 @@ interface Instructor {
   school: string;
 }
 
+interface Candidates {
+  B: number;
+  A1: number;
+  A2: number;
+  C: number;
+  D: number;
+  FARK_A1: number;
+  FARK_A2: number;
+  BAKANLIK_A1: number;
+}
+
+const defaultCandidates: Candidates = {
+  B: 0,
+  A1: 0,
+  A2: 0,
+  C: 0,
+  D: 0,
+  FARK_A1: 0,
+  FARK_A2: 0,
+  BAKANLIK_A1: 0
+};
+
 const App: React.FC = () => {
+  const { isMobile, isTablet } = useDevice();
   const [loggedInSchool, setLoggedInSchool] = useState<School | null>(null);
   const [loggedInInstructor, setLoggedInInstructor] = useState<Instructor | null>(null);
   const [schools, setSchools] = useState<School[]>([]);
@@ -40,7 +65,7 @@ const App: React.FC = () => {
                 const schoolData = snapshot.val();
                 setLoggedInSchool(prevState => ({
                   ...prevState!,
-                  candidates: schoolData.candidates || {}
+                  candidates: schoolData.candidates || defaultCandidates
                 }));
               }
             });
@@ -53,7 +78,7 @@ const App: React.FC = () => {
               id: 'admin',
               name: 'Admin',
               email: 'admin@surucukursu.com',
-              candidates: {}
+              candidates: defaultCandidates
             });
           } else {
             setError('Kullanıcı okulu bulunamadı. Lütfen yönetici ile iletişime geçin.');
@@ -99,7 +124,11 @@ const App: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   if (error) {
@@ -117,27 +146,51 @@ const App: React.FC = () => {
     );
   }
 
-  return (
-    <div className="App">
-      {loggedInSchool ? (
+  if (loggedInSchool?.id === 'admin') {
+    return (
+      <div className={`
+        ${isMobile ? 'p-2' : isTablet ? 'p-4' : 'p-6'}
+        ${isMobile ? 'text-sm' : 'text-base'}
+      `}>
+        <AdminPanel />
+      </div>
+    );
+  }
+
+  if (loggedInInstructor) {
+    return (
+      <div className={`
+        ${isMobile ? 'p-2' : isTablet ? 'p-4' : 'p-6'}
+        ${isMobile ? 'text-sm' : 'text-base'}
+      `}>
+        <InstructorDashboard
+          instructor={loggedInInstructor}
+          onLogout={handleLogout}
+        />
+      </div>
+    );
+  }
+
+  if (loggedInSchool) {
+    return (
+      <div className={`
+        ${isMobile ? 'p-2' : isTablet ? 'p-4' : 'p-6'}
+        ${isMobile ? 'text-sm' : 'text-base'}
+      `}>
         <DashboardLayout
           school={loggedInSchool}
           onLogout={handleLogout}
           schools={schools}
           updateCandidates={updateCandidates}
         />
-      ) : loggedInInstructor ? (
-        <InstructorDashboard
-          instructor={loggedInInstructor}
-          onLogout={handleLogout}
-        />
-      ) : (
-        <Login 
-          onLogin={handleLogin}
-          onInstructorLogin={handleInstructorLogin}
-        />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-container">
       <ToastContainer />
+      <Login onLogin={handleLogin} onInstructorLogin={handleInstructorLogin} />
     </div>
   );
 };

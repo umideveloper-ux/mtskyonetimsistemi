@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Minus, Info } from 'lucide-react';
-import { School, LicenseClass, DifferenceClass } from '../../types';
+import { School, LicenseClass, DifferenceClass, CLASS_NAMES } from '../../types';
 import { toast } from 'react-toastify';
 
 interface DashboardCandidatesProps {
@@ -11,76 +10,100 @@ interface DashboardCandidatesProps {
 const DashboardCandidates: React.FC<DashboardCandidatesProps> = ({ school, updateCandidates }) => {
   const [showCandidates, setShowCandidates] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleCandidateChange = async (licenseClass: LicenseClass | DifferenceClass, change: number) => {
+    if (isLoading) return;
+    
     setIsLoading(true);
-    setError(null);
     try {
+      const currentCount = school.candidates[licenseClass] || 0;
+      const newCount = Math.max(0, currentCount + change);
+      
       const updatedCandidates = {
         ...school.candidates,
-        [licenseClass]: Math.max(0, (school.candidates[licenseClass] || 0) + change)
+        [licenseClass]: newCount
       };
+      
       await updateCandidates(school.id, updatedCandidates);
-      toast.success('Aday sayısı başarıyla güncellendi.');
-    } catch (error: any) {
+      toast.success('Aday sayısı güncellendi');
+    } catch (error) {
       console.error('Error updating candidates:', error);
-      setError('Aday sayısı güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
-      toast.error('Aday sayısı güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      toast.error('Aday sayısı güncellenirken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Aday Sayıları</h2>
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-gray-800">Aday Sayıları</h2>
         <button
           onClick={() => setShowCandidates(!showCandidates)}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
         >
-          {showCandidates ? <Minus size={20} /> : <Plus size={20} />}
-          <span className="ml-2">{showCandidates ? 'Gizle' : 'Göster'}</span>
+          {showCandidates ? 'Gizle' : 'Göster'}
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          <span className="block sm:inline">{error}</span>
+      {!showCandidates ? (
+        <div className="text-center text-gray-500 py-8">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Aday sayılarını görüntülemek için "Göster" butonuna tıklayın
         </div>
-      )}
-
-      {!showCandidates && (
-        <div className="text-gray-600 italic flex items-center">
-          <Info size={18} className="mr-2" />
-          <span>Aday sayılarını görüntülemek ve düzenlemek için "Göster" butonuna tıklayın.</span>
-        </div>
-      )}
-
-      {showCandidates && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Object.entries(school.candidates).map(([classType, count]) => (
-            <div key={classType} className="bg-gray-100 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-2">{classType}</h3>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">{count || 0}</span>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleCandidateChange(classType as LicenseClass | DifferenceClass, -1)}
-                    className="bg-red-500 text-white p-2 rounded-full"
-                    disabled={isLoading}
-                  >
-                    <Minus size={20} />
-                  </button>
-                  <button
-                    onClick={() => handleCandidateChange(classType as LicenseClass | DifferenceClass, 1)}
-                    className="bg-green-500 text-white p-2 rounded-full"
-                    disabled={isLoading}
-                  >
-                    <Plus size={20} />
-                  </button>
+            <div
+              key={classType}
+              className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">{classType}</h3>
+                  <p className="text-sm text-gray-500">{CLASS_NAMES[classType as LicenseClass | DifferenceClass]}</p>
                 </div>
+                <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">
+                  {count}
+                </span>
+              </div>
+              
+              <div className="flex justify-between space-x-2">
+                <button
+                  onClick={() => handleCandidateChange(classType as LicenseClass | DifferenceClass, -1)}
+                  disabled={isLoading || count === 0}
+                  className={`flex-1 p-2 rounded ${
+                    count === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-red-100 text-red-600 hover:bg-red-200'
+                  } transition-colors`}
+                >
+                  <svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                </button>
+                
+                <button
+                  onClick={() => handleCandidateChange(classType as LicenseClass | DifferenceClass, 1)}
+                  disabled={isLoading}
+                  className="flex-1 p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}
