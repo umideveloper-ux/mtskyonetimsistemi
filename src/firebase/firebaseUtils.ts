@@ -4,6 +4,9 @@ import {
   set,
   update,
   onValue,
+  query,
+  orderByChild,
+  equalTo,
   DatabaseReference,
   DataSnapshot
 } from 'firebase/database';
@@ -29,6 +32,28 @@ export const getSchoolsData = async (schoolId: string): Promise<School | null> =
     if (error.code === 'NETWORK_ERROR') {
       throw new Error('İnternet bağlantınızı kontrol edin ve sayfayı yenileyin.');
     }
+    throw error;
+  }
+};
+
+export const getSchoolByEmail = async (email: string): Promise<School | null> => {
+  try {
+    const schoolsRef = ref(db, 'schools');
+    const schoolsSnapshot = await get(schoolsRef);
+    
+    if (schoolsSnapshot.exists()) {
+      const schools = schoolsSnapshot.val();
+      const schoolId = Object.keys(schools).find(id => 
+        schools[id].email?.toLowerCase() === email.toLowerCase()
+      );
+      
+      if (schoolId) {
+        return { id: schoolId, ...schools[schoolId] } as School;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting school by email:', error);
     throw error;
   }
 };

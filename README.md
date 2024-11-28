@@ -58,6 +58,10 @@ npm run dev
 - Animasyonlu geçişler
 - Bildirim sistemi
 
+## Deployment
+
+Site Netlify üzerinde yayında.
+
 ## Netlify Yapılandırması
 
 ```toml

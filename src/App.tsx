@@ -6,7 +6,7 @@ import AdminPanel from './components/AdminPanel';
 import { School } from './types';
 import { auth } from './firebase/firebase.config';
 import { signOutUser } from './firebase/auth';
-import { getSchoolsData, updateCandidates, subscribeToSchool } from './firebase/firebaseUtils';
+import { getSchoolsData, getSchoolByEmail, updateCandidates, subscribeToSchool } from './firebase/firebaseUtils';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useDevice } from './hooks/useDevice';
@@ -53,31 +53,9 @@ const App: React.FC = () => {
       if (user) {
         try {
           setIsLoading(true);
-          const userSchool = await getSchoolsData(user.uid);
-          
-          if (userSchool) {
-            setLoggedInSchool(userSchool);
-            
-            // Okulun verilerini realtime olarak dinle
-            const unsubscribeSchool = subscribeToSchool(userSchool.id, (schoolData) => {
-              setLoggedInSchool(prevState => {
-                if (!prevState) return null;
-                return {
-                  ...prevState,
-                  ...schoolData,
-                  id: prevState.id, // id'yi koruyoruz
-                  candidates: {
-                    ...prevState.candidates,
-                    ...(schoolData.candidates || {})
-                  }
-                };
-              });
-            });
+          setError(null);
 
-            return () => {
-              unsubscribeSchool();
-            };
-          } else if (user.email === 'admin@surucukursu.com') {
+          if (user.email === 'admin@surucukursu.com') {
             setLoggedInSchool({
               id: 'admin',
               name: 'Admin',
@@ -85,27 +63,49 @@ const App: React.FC = () => {
               candidates: defaultCandidates
             });
           } else {
-            setError('Kullanıcı okulu bulunamadı. Lütfen yönetici ile iletişime geçin.');
-            await signOutUser();
+            const userSchool = await getSchoolByEmail(user.email || '');
+            
+            if (userSchool) {
+              setLoggedInSchool(userSchool);
+              
+              // Okulun verilerini realtime olarak dinle
+              const unsubscribeSchool = subscribeToSchool(userSchool.id, (schoolData) => {
+                setLoggedInSchool(prevState => {
+                  if (!prevState) return null;
+                  return {
+                    ...prevState,
+                    ...schoolData,
+                    id: prevState.id,
+                    candidates: {
+                      ...prevState.candidates,
+                      ...(schoolData.candidates || {})
+                    }
+                  };
+                });
+              });
+
+              return () => {
+                unsubscribeSchool();
+              };
+            } else {
+              setError('Kullanıcı okulu bulunamadı. Lütfen yönetici ile iletişime geçin.');
+              await signOutUser();
+            }
           }
         } catch (error: any) {
-          console.error('Error fetching schools data:', error);
-          setError(`Veri yüklenirken bir hata oluştu: ${error.message}`);
-          toast.error(`Veri yüklenirken bir hata oluştu: ${error.message}`);
+          console.error('Error in auth state change:', error);
+          setError(error.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+          await signOutUser();
         } finally {
           setIsLoading(false);
         }
       } else {
         setLoggedInSchool(null);
-        setLoggedInInstructor(null);
-        setSchools([]);
         setIsLoading(false);
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   const handleLogin = (school: School) => {
